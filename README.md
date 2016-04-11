@@ -91,7 +91,4 @@ foreach($futures as $f) {
     log("[$pid]finished: " . $f->get());
 }
 
-// 打印worker状态
-$w->worker_status();
-
 ~~~
