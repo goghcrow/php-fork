@@ -11,10 +11,18 @@ class Fork
 {
     private $workers = [];
     private $ppid;
+    private $is_parent = true;
 
     public function __construct() {
         _env_check();
         $this->init();
+    }
+
+    public function __destruct() {
+        if($this->is_parent) {
+            $this->wait();
+            $this->worker_status();
+        }
     }
 
     protected function init() {
@@ -119,6 +127,7 @@ class Fork
         list($to_parent, $to_child) = $fd;
         $worker = new Worker($this, $this->ppid);
         if($pid === 0) {
+            $this->is_parent = false;
             // child
             socket_close($to_child);
             $worker->is_child = true;
@@ -227,7 +236,9 @@ class Future
     // block
     public function get() {
         try {
-            return read_pkg($this->socket);
+            $result = read_pkg($this->socket);
+            // $this->fork->wait($this->pid);
+            return $result;
         } catch (\Exception $e) {
             error_log($e->getMessage());
         }
