@@ -13,13 +13,20 @@ class Fork
     private $ppid;
     private $is_parent = true;
 
-    public function __construct() {
+    /**
+     * 父进程是否等待所有子进程退出~
+     * @var boolean
+     */
+    private $isWaitAllChilds = false;
+
+    public function __construct($isWaitAllChilds = true) {
         _env_check();
         $this->init();
+        $this->isWaitAllChilds = boolval($isWaitAllChilds);
     }
 
     public function __destruct() {
-        if($this->is_parent) {
+        if($this->is_parent && $this->isWaitAllChilds) {
             $this->wait();
             $this->worker_status();
         }
@@ -188,6 +195,7 @@ class Worker
         $this->init();
         try {
             $result = $f($this);
+            // FIXME 判断父进程是否存活~
             write_pkg($this->socket, $result);
             exit(0);
         } catch(\Exception $e) {
