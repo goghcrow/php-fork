@@ -121,7 +121,11 @@ class Fork
         return false;
     }
 
-    public function task(callable $task) {
+    public function task(/*callable*/ $task) {
+        if(!is_callable($task)) {
+            throw new \InvalidArgumentException("task is not callable");
+        }
+
         if(socket_create_pair(AF_UNIX, SOCK_STREAM, 0, $fd) === false) {
             throw new \RuntimeException("socket_create_pair() failed. Reason: ".socket_strerror(socket_last_error()));
         }
