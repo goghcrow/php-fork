@@ -28,7 +28,6 @@ class Fork
     public function __destruct() {
         if($this->is_parent && $this->isWaitAllChilds) {
             $this->wait();
-            $this->worker_status();
         }
     }
 
@@ -78,26 +77,28 @@ class Fork
     }
 
     // block
-    private function _wait($pid) {
+    private function _wait($pid, &$desc = "") {
         if(!isset($this->workers[$pid])) {
             return false;
         }
         /* @var Worker $worker */
         $worker = $this->workers[$pid];
-        $desc = "";
         // !!!block
         pcntl_waitpid($pid, $status);
         switch(true) {
             case pcntl_wifexited($status): // 是否正常退出
-                $desc = "exited => return code: " . pcntl_wexitstatus($status);
-                $return = true;
+                $return_code = pcntl_wexitstatus($status);
+                $desc = "exited($return_code)";
+                $return = $return_code === 0;
                 break;
             case pcntl_wifstopped($status): // [信号]是否已经停止
-                $desc = "stopped => signal: " . pcntl_wstopsig($status);
+                $signal = pcntl_wstopsig($status);
+                $desc = "stopped($signal)";
                 $return = false;
                 break;
             case pcntl_wifsignaled($status): // [信号]是否由于某个信号中断
-                $desc = "signaled => signal: " . pcntl_wtermsig($status);
+                $signal = pcntl_wtermsig($status);
+                $desc = "signaled($signal)";
                 $return = false;
                 break;
             default:
@@ -109,14 +110,14 @@ class Fork
         return $return;
     }
 
-    public function wait($pid = -1 ) {
+    public function wait($pid = -1, &$desc = "" ) {
         if($pid === -1) {
             foreach($this->workers as $pid => $_) {
                 $this->wait($pid);
             }
             return true;
         } else if(isset($this->workers[$pid])) {
-            return $this->_wait($pid);
+            return $this->_wait($pid, $desc);
         }
         return false;
     }
@@ -286,7 +287,7 @@ function _read_size($socket, $size) {
         }
         // no more data to read
         if($rec === "") {
-            return "";
+            throw new \RuntimeException("socket read nothing");
         }
         $buffer .= $rec;
     } while(strlen($buffer) < $size); // pack N
